@@ -1,3 +1,5 @@
+// Maximum number of events
+#define N 50
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -12,7 +14,17 @@ struct cpu {
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
+// Structure to store a single system call event
+struct syscall_event {
+    int pid;                     // Process ID
+    char command_name[16];       // Command name
+    char syscall_name[16];       // System call name
+    int return_value;            // Return value of the system call
+};
 
+// Circular buffer to store events
+extern struct syscall_event event_buffer[N];
+extern int event_index;
 //PAGEBREAK: 17
 // Saved registers for kernel context switches.
 // Don't need to save all the segment registers (%cs, etc),
@@ -49,6 +61,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int trace;
 };
 
 // Process memory is laid out contiguously, low addresses first:

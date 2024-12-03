@@ -12,7 +12,7 @@
 // Arguments on the stack, from the user call to the C
 // library system call function. The saved user %esp points
 // to a saved program counter, and then the first argument.
-
+extern int sys_dump(void);
 // Fetch the int at addr from the current process.
 int
 fetchint(uint addr, int *ip)
@@ -126,20 +126,70 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_strace] sys_strace,
+[SYS_dump] sys_dump,
 };
 
-void
-syscall(void)
-{
-  int num;
-  struct proc *curproc = myproc();
+static char *syscall_names[] = {
+    [SYS_fork]    "fork",
+    [SYS_exit]    "exit",
+    [SYS_wait]    "wait",
+    [SYS_pipe]    "pipe",
+    [SYS_read]    "read",
+    [SYS_kill]    "kill",
+    [SYS_exec]    "exec",
+    [SYS_fstat]   "fstat",
+    [SYS_chdir]   "chdir",
+    [SYS_dup]     "dup",
+    [SYS_getpid]  "getpid",
+    [SYS_sbrk]    "sbrk",
+    [SYS_sleep]   "sleep",
+    [SYS_uptime]  "uptime",
+    [SYS_open]    "open",
+    [SYS_write]   "write",
+    [SYS_mknod]   "mknod",
+    [SYS_unlink]  "unlink",
+    [SYS_link]    "link",
+    [SYS_mkdir]   "mkdir",
+    [SYS_close]   "close",
+};
 
-  num = curproc->tf->eax;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    curproc->tf->eax = syscalls[num]();
-  } else {
-    cprintf("%d %s: unknown sys call %d\n",
-            curproc->pid, curproc->name, num);
-    curproc->tf->eax = -1;
-  }
+
+
+void syscall(void) {
+    struct proc *p = myproc();
+    int num = p->tf->eax;  // System call number
+
+    if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+        int ret = syscalls[num]();  // Execute the system call
+
+        // Log the system call if tracing is enabled
+        if (p->trace) {  // Check if tracing is enabled for the process
+            cprintf("TRACE: pid = %d | command_name = %s | syscall = %s | return value = %d\n",
+                    p->pid, p->name, syscall_names[num], ret);
+
+            // Log the event in the circular buffer
+            struct syscall_event *event = &event_buffer[event_index];
+            event->pid = p->pid;
+            safestrcpy(event->command_name, p->name, sizeof(event->command_name));
+            safestrcpy(event->syscall_name, syscall_names[num], sizeof(event->syscall_name));
+            event->return_value = ret;
+
+            // Update the circular buffer index
+            event_index = (event_index + 1) % N;
+        }
+
+        p->tf->eax = ret;  // Store return value
+    } else {
+        cprintf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
+        p->tf->eax = -1;
+    }
+}
+
+int sys_strace(void) {
+    int state;
+    if (argint(0, &state) < 0)
+        return -1;
+    myproc()->trace = state;  // Enable or disable tracing
+    return 0;
 }

@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+struct syscall_event event_buffer[N];  // Circular buffer
+int event_index = 0;                   // Current index in the buffer
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -230,6 +232,12 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+
+  // Log the exit syscall before the process is terminated
+    if (curproc->trace) {
+        cprintf("TRACE: pid = %d | command_name = %s | syscall = exit | return value = 0\n",
+                curproc->pid, curproc->name);
+    }
 
   if(curproc == initproc)
     panic("init exiting");

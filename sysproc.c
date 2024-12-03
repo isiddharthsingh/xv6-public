@@ -89,3 +89,20 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// Circular buffer for storing syscall events
+extern struct syscall_event event_buffer[N];
+extern int event_index;
+
+int sys_dump(void) {
+    int i;
+    for (i = 0; i < N; i++) {
+        int idx = (event_index + i) % N;  // Circular buffer index
+        struct syscall_event *event = &event_buffer[idx];
+        if (event->pid != 0) {  // Ignore empty entries
+            cprintf("DUMP: pid = %d | command_name = %s | syscall = %s | return value = %d\n",
+                    event->pid, event->command_name, event->syscall_name, event->return_value);
+        }
+    }
+    return 0;
+}

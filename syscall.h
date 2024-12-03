@@ -20,3 +20,10 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_strace 22  // Use the next available number
+#define SYS_dump 23  // Or the next available number
+#ifndef __ASSEMBLER__  // Ensure these declarations are ignored by the assembler
+
+int sys_dump(void);
+
+#endif // __ASSEMBLER__
